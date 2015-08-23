@@ -85,9 +85,26 @@ switch ($modx->event->name) {
 	case 'msOnCreateOrder':
 		/**@var msOrderInterface $order */
 		if ($data = $order->get()) {
+
+            $msdCouponparam = array();
+            $msdCouponparam['code'] = $data['coupon_code'];
+            if (!empty($data['coupon_code'])){
+                if ($tmp_coupon = $modx->getObject('msdCoupon', array('code' => $data['coupon_code']))) {
+                    $group = $tmp_coupon->getOne('Group');
+                    if($group->get('disposable') == false){
+                         $msdCouponparam = array(
+                             'active' => true,
+                             'code' => $data['coupon_code']
+                         );
+                    }
+                }
+            }
+
+
 			/**@var msdCoupon $coupon */
-			if (!empty($data['coupon_code']) && $coupon = $modx->getObject('msdCoupon', array('code' => $data['coupon_code']))) {
-				/**@var msOrder $msOrder */
+			if (!empty($data['coupon_code']) && $coupon = $modx->getObject('msdCoupon', $msdCouponparam)) {
+
+                /**@var msOrder $msOrder */
 				$coupon->fromArray(array(
 					'active' => false,
 					'activatedon' => date('Y-m-d H:i:s'),
@@ -104,8 +121,29 @@ switch ($modx->event->name) {
 				}
 				$msOrder->set('properties', $properties);
 				$msOrder->save();
+
+                // save coupon users
+                if ($modx->user->isAuthenticated()) {
+
+                    $user = $modx->getObject('modUser', $modx->user->id);
+                    $profile = $user->getOne('Profile');
+                    $extended = $profile->get('extended');
+                    $coupon_code = array();
+                    if ($coupon = $extended['msd_coupon_action']) {
+                        $coupon_code = unserialize($coupon);
+                    }
+
+                    $coupon_code = empty($coupon_code) ? array($data['coupon_code']) : array_merge($coupon_code, array($data['coupon_code']));
+                    $extended['msd_coupon_action'] = serialize($coupon_code);
+
+                    $profile->set('extended', $extended);
+                    $profile->save();
+                    $user->save();
+
+                }
 			}
 		}
+
 		break;
 
 	case 'OnWebLogin':
@@ -115,6 +153,43 @@ switch ($modx->event->name) {
 		break;
 
 	case 'OnLoadWebDocument':
+
+        /**
+         * use of coupons
+         */
+		if (!empty($_REQUEST['msd_action'])) {
+
+            $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest';
+            $action = trim($_REQUEST['msd_action']);
+            $ctx = !empty($_REQUEST['ctx']) ? (string) $_REQUEST['ctx'] : 'web';
+            if ($ctx != 'web') {$modx->switchContext($ctx);}
+
+            $miniShop2 = $modx->getService('miniShop2');
+            $miniShop2->initialize($modx->context->key, array('json_response' => true));
+
+            switch ($action) {
+                case 'coupon/apply':  $response = $msDiscount->checkCouponNew(@$_POST['coupon_code']); break;
+                case 'coupon/cancel': $response = $msDiscount->cancelCoupon(); break;
+                case 'coupon/status': $response = $msDiscount->statusCoupon(); break;
+                default:
+                    $message = ($_REQUEST['msd_action'] != $action)
+                        ? 'ms2_err_register_globals'
+                        : 'ms2_err_unknown';
+                    $response = $modx->error($message);
+            }
+
+            if($response['success']){
+                $response = $miniShop2->success('', array('status' => $msDiscount->statusCoupon()));
+            } else {
+                $response = $miniShop2->error($response['message'], array('status' => $msDiscount->statusCoupon()));
+            }
+
+            if ($isAjax) {
+                @session_write_close();
+                exit($response);
+            }
+        }
+
 		/**
 		 * Recalculate cart of user if flag is set
 		 * @var miniShop2 $miniShop2

@@ -30,12 +30,14 @@
 
 	<object class="msdCouponGroup" table="ms2d_coupons_group" extends="xPDOSimpleObject">
 		<field key="name" dbtype="varchar" precision="255" phptype="string" null="false" />
+        <field key="description" dbtype="text" phptype="text" null="true" default="" />
 		<field key="discount" dbtype="varchar" precision="10" phptype="string" null="false" />
 		<field key="begins" dbtype="timestamp" phptype="timestamp" null="true" default="0000-00-00 00:00:00" />
 		<field key="ends" dbtype="timestamp" phptype="timestamp" null="true" default="0000-00-00 00:00:00" />
 		<field key="coupons" dbtype="int" phptype="int" null="true" default="0" />
 		<field key="activated" dbtype="int" phptype="int" null="true" default="0" />
 		<field key="prefix" dbtype="char" precision="5" phptype="string" null="true" default="" />
+
 
 		<composite alias="Coupons" class="msdCoupon" local="id" foreign="group_id" cardinality="many" owner="local" />
 	</object>
@@ -48,7 +50,7 @@
 		<field key="active" dbtype="tinyint" precision="1" phptype="boolean" attributes="unsigned" null="true" default="1" />
 		<field key="order_id" dbtype="int" precision="10" phptype="int" null="true" default="" />
 
-		<index alias="code" name="code" primary="false" unique="true" type="BTREE">
+		<index alias="code" name="code" primary="false" unique="false" type="BTREE">
 			<column key="code" length="" collation="A" null="false" />
 		</index>
 		<index alias="active" name="active" primary="false" unique="false" type="BTREE">
@@ -59,12 +61,35 @@
 		<aggregate alias="Order" class="msOrder" local="order_id" foreign="id" cardinality="one" owner="local" />
 	</object>
 
+    <object class="msdCouponsMember" table="ms2d_coupons_members" extends="xPDOObject">
+        <field key="coupons_id" dbtype="integer" precision="10" attributes="unsigned" phptype="integer" null="false" index="pk" />
+        <field key="group_id" dbtype="integer" precision="10" attributes="unsigned" phptype="integer" null="false" index="pk" />
+        <field key="type" dbtype="varchar" precision="10" phptype="string" null="false" index="pk" />
+        <field key="relation" dbtype="varchar" precision="10" phptype="varchar" null="true" default="in" />
+
+        <index alias="PRIMARY" name="PRIMARY" primary="true" unique="true">
+            <column key="coupons_id" length="" collation="A" null="false" />
+            <column key="group_id" length="" collation="A" null="false" />
+            <column key="type" length="" collation="A" null="false" />
+        </index>
+
+        <index alias="relation" name="relation" primary="false" unique="false" type="BTREE" >
+            <column key="relation" length="" collation="A" null="false" />
+        </index>
+
+        <aggregate alias="Coupon" class="msdCoupon" local="coupons_id" foreign="group_id" cardinality="one" owner="foreign" />
+    </object>
+
 	<object class="msdUserGroup" table="ms2d_user_groups" extends="xPDOSimpleObject">
 		<field key="discount" dbtype="varchar" precision="10" phptype="string" null="true" default="0" />
 		<field key="joinsum" dbtype="decimal" precision="10,2" phptype="float" null="true" default="0" />
+		<field key="rates" dbtype="decimal" precision="10,2" phptype="float" null="true" default="0" />
 
 		<index alias="joinsum" name="joinsum" primary="false" unique="false" type="BTREE" >
 			<column key="joinsum" length="" collation="A" null="false" />
+		</index>
+		<index alias="rates" name="rates" primary="false" unique="false" type="BTREE" >
+			<column key="rates" length="" collation="A" null="false" />
 		</index>
 
 		<composite alias="Members" class="msdSaleMember" local="id" foreign="group_id" owner="local" cardinality="many">

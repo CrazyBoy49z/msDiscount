@@ -7,7 +7,7 @@ msDiscount.grid.Coupons = function(config) {
 		baseParams: {
 			action: 'mgr/coupons/group/getlist'
 		},
-		fields: ['id', 'name', 'discount', 'begins', 'ends', 'coupons', 'activated', 'prefix', 'actions'],
+		fields: ['id', 'name', 'description', 'discount', 'disposable', 'begins', 'ends', 'coupons', 'activated', 'prefix', 'actions'],
 		autoHeight: true,
 		paging: true,
 		remoteSort: true,
@@ -68,7 +68,9 @@ Ext.extend(msDiscount.grid.Coupons,MODx.grid.Grid, {
 		var columns = {
 			id: {hidden: true, width: 50},
 			name: {width: 75},
+            description: {hidden: true},
 			discount: {width: 50},
+            disposable: {hidden: true},
 			coupons: {width: 50},
 			begins: {width: 50, renderer: miniShop2.utils.formatDate},
 			ends: {width: 50, renderer: miniShop2.utils.formatDate},
@@ -236,6 +238,7 @@ msDiscount.window.Coupons = function(config) {
 	});
 	msDiscount.window.Coupons.superclass.constructor.call(this,config);
 };
+
 Ext.extend(msDiscount.window.Coupons,MODx.Window, {
 
 	getTabs: function(config) {
@@ -247,7 +250,7 @@ Ext.extend(msDiscount.window.Coupons,MODx.Window, {
 			border: true,
 			activeTab: 0,
 			autoHeight: true,
-			stateful: true,
+			stateful: false,
 			stateId: 'msd-window-coupons-' + config['mode'],
 			stateEvents: ['tabchange'],
 			getState:function() {return {activeTab: this.items.indexOf(this.getActiveTab())};},
@@ -264,7 +267,27 @@ Ext.extend(msDiscount.window.Coupons,MODx.Window, {
 					record: config.record,
 					group_id: config.record.id
 				}
-			}]
+			},{
+                title: _('msd_coupons_group_users'),
+                disabled: config['mode'] == 'create',
+                layout: 'anchor',
+                items: {
+                    xtype: 'msd-grid-coupons-group',
+                    record: config.record,
+                    type: 'users',
+                    coupons_id: config.record.id
+                }
+            },{
+                title: _('msd_coupons_group_products'),
+                disabled: config['mode'] == 'create',
+                layout: 'anchor',
+                items: {
+                    xtype: 'msd-grid-coupons-group',
+                    record: config.record,
+                    type: 'products',
+                    coupons_id: config.record.id
+                }
+            }]
 		}];
 	},
 
@@ -277,7 +300,7 @@ Ext.extend(msDiscount.window.Coupons,MODx.Window, {
 			anchor: '100%',
 			style: {margin: '10px 0 0 0'},
 			items: [{
-				columnWidth: .7,
+				columnWidth: .5,
 				layout: 'form',
 				defaults: {msgTarget: 'under'},
 				items: [
@@ -289,7 +312,15 @@ Ext.extend(msDiscount.window.Coupons,MODx.Window, {
 				style: {margin: 0},
 				defaults: {msgTarget: 'under'},
 				items: [
-					{xtype: 'textfield', name: 'prefix', fieldLabel: _('msd_coupons_prefix'), anchor: '99%', disabled: config.mode == 'update', maxLength: 5},
+					{xtype: 'textfield', name: 'prefix', fieldLabel: _('msd_coupons_prefix'), anchor: '99%', disabled: config.mode == 'update', maxLength: msDiscount.config.prefix_length},
+				]
+			}, {
+				columnWidth: .2,
+				layout: 'form',
+				style: {margin: '10px 0 0 5px'},
+				defaults: {msgTarget: 'under'},
+				items: [
+                    {xtype: 'xcheckbox', fieldLabel: '', boxLabel: _('msd_coupons_disposable'), anchor: '80%' , description: _('msd_coupons_disposable_desc'), name: 'disposable', disabled: config.mode == 'update'}
 				]
 			}]
 		}, {
@@ -315,7 +346,10 @@ Ext.extend(msDiscount.window.Coupons,MODx.Window, {
 					{xtype: 'minishop2-xdatetime', name: 'ends', fieldLabel: _('msd_coupons_ends'), anchor: '99%'},
 				]
 			}]
-		}, {
+		},
+        {
+            xtype: 'textarea', name: 'description', fieldLabel: _('msd_coupons_description'), anchor: '100%', height: 75}
+        ,{
 			xtype: 'displayfield', cls: 'panel-desc', html: _('msd_coupons_form_desc'), anchor: '100%'
 		}];
 	},
@@ -474,3 +508,180 @@ Ext.extend(msDiscount.grid.Coupons, MODx.grid.Grid, {
 
 });
 Ext.reg('msd-grid-coupons', msDiscount.grid.Coupons);
+
+msDiscount.grid.CouponsMemberGroup = function(config) {
+    config = config || {};
+    if (!config.id) {
+        config.id = Ext.id();
+    }
+    Ext.applyIf(config, {
+        layout: 'anchor',
+        id: config.id,
+        url: msDiscount.config.connector_url,
+        baseParams: {
+            action: 'mgr/coupons/members/getlist',
+            type: config.type,
+            coupons_id: config.record.id
+        },
+        fields: ['coupons_id', 'group_id', 'type', 'relation', 'name', 'discount', 'actions'],
+        autoHeight: true,
+        paging: true,
+        remoteSort: true,
+        pageSize: 5,
+        sm: new Ext.grid.CheckboxSelectionModel(),
+        tbar: this.getTopBar(config),
+        columns: this.getColumns(config),
+    });
+    msDiscount.grid.CouponsMemberGroup.superclass.constructor.call(this, config);
+};
+Ext.extend(msDiscount.grid.CouponsMemberGroup, MODx.grid.Grid, {
+
+    getMenu: function (grid, rowIndex) {
+        var row = grid.getStore().getAt(rowIndex);
+        var menu = msDiscount.utils.getMenu(row.data['actions'], this);
+
+        this.addContextMenuItem(menu);
+    },
+
+    onClick: function (e) {
+        var elem = e.getTarget();
+        if (elem.nodeName == 'BUTTON') {
+            var row = this.getSelectionModel().getSelected();
+            if (typeof(row) != 'undefined') {
+                var action = elem.getAttribute('action');
+                if (action == 'showMenu') {
+                    var ri = this.getStore().find('id', row.id);
+                    return this._showMenu(this, ri, e);
+                }
+                else if (typeof this[action] === 'function') {
+                    this.menu.record = row.data;
+                    return this[action](this, e);
+                }
+            }
+        }
+        return this.processEvent('click', e);
+    },
+
+    getTopBar: function(config) {
+        return [{
+            xtype: 'msd-combo-group',
+            id: config.id + '-combo',
+            type: config.type,
+            coupons_id: config.record.id,
+            listeners: {
+                select: {fn: this.addMember, scope: this}
+            }
+        }];
+    },
+
+    getColumns: function() {
+        var columns = {
+            name: {width: 75},
+            relation: {width: 50, header: _('msd_members_relation'), renderer: this._renderRelation},
+            discount: {width: 50},
+            actions: {width: 50, renderer: msDiscount.utils.renderActions, sortable: false, id: 'actions', header: _('msd_actions')}
+        };
+        var tmp = [];
+        for (var i in columns) {
+            if (columns.hasOwnProperty(i)) {
+                Ext.applyIf( columns[i], {
+                    header: _('msd_group_' +  i),
+                    dataIndex: i,
+                    sortable: true,
+                });
+                tmp.push(columns[i]);
+            }
+        }
+        return tmp;
+    },
+
+    addMember: function(combo, row) {
+        combo.reset();
+
+        MODx.Ajax.request({
+            url: this.config.url,
+            params: {
+                action: 'mgr/coupons/members/create',
+                coupons_id: this.config.record.id,
+                group_id: row.id,
+                type: this.config.type
+            },
+            listeners: {
+                success: {
+                    fn: function(r) {
+                        combo.getStore().reload();
+                        this.refresh();
+                    }, scope: this
+                }
+            }
+        });
+    },
+
+    memberAction: function(method) {
+        var ids = this._getSelectedIds();
+        if (!ids.length) {
+            return false;
+        }
+        MODx.Ajax.request({
+            url: msDiscount.config.connector_url,
+            params: {
+                action: 'mgr/coupons/members/multiple',
+                method: method,
+                ids: Ext.util.JSON.encode(ids),
+            },
+            listeners: {
+                success: {
+                    fn: function() {
+                        this.refresh();
+                        Ext.getCmp(this.config.id + '-combo').getStore().reload();
+                    }, scope: this
+                },
+                failure: {
+                    fn: function (response) {
+                        MODx.msg.alert(_('error'), response.message);
+                    }, scope: this
+                },
+            }
+        })
+    },
+
+    switchMember: function() {
+        this.memberAction('switch');
+    },
+
+    removeMember: function() {
+        this.memberAction('remove');
+    },
+
+    _renderRelation: function(value) {
+        if (value == 'in') {
+            return '<span style="color:green;">' + _('msd_members_relation_in') + '</span>';
+        }
+        else if (value == 'out') {
+            return '<span style="color:red;">' + _('msd_members_relation_out') + '</span>';
+        }
+        else {
+            return value;
+        }
+    },
+
+    _getSelectedIds: function() {
+        var ids = [];
+        var selected = this.getSelectionModel().getSelections();
+
+        for (var i in selected) {
+            if (!selected.hasOwnProperty(i)) {
+                continue;
+            }
+            ids.push({
+                coupons_id: selected[i]['data']['coupons_id'],
+                group_id: selected[i]['data']['group_id'],
+                type: selected[i]['data']['type'],
+            });
+        }
+
+        return ids;
+    },
+
+});
+Ext.reg('msd-grid-coupons-group', msDiscount.grid.CouponsMemberGroup);

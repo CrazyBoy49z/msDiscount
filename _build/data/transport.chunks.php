@@ -11,6 +11,14 @@ $tmp = array(
 		'file' => 'msd_discount',
 		'description' => '',
 	),
+	'tpl.msdCoupon.Form' => array(
+		'file' => 'msd_coupon_form',
+		'description' => '',
+	),
+	'msdDiscountCoupon' => array(
+		'file' => 'msd_discount_outer',
+		'description' => '',
+	),
 );
 
 foreach ($tmp as $k => $v) {

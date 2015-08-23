@@ -9,7 +9,7 @@ msDiscount.grid.Users = function(config) {
 		autosave: true,
 		save_action: 'mgr/usergroups/updatefromgrid',
 		//preventSaveRefresh: false,
-		fields: ['id', 'name', 'discount', 'joinsum', 'actions'],
+		fields: ['id', 'name', 'discount', 'joinsum', 'rates', 'actions'],
 		autoHeight: true,
 		paging: true,
 		remoteSort: true,
@@ -60,6 +60,7 @@ Ext.extend(msDiscount.grid.Users, MODx.grid.Grid, {
 			name: {width: 200, editor: {xtype: 'textfield'}},
 			discount: {editor: {xtype: 'textfield'}},
 			joinsum: {editor: {xtype: 'numberfield', allowNegative: false, allowDecimals: true}},
+            rates: {editor: {xtype: 'numberfield', allowNegative: false, allowDecimals: true}},
 			actions: {width: 50, renderer: msDiscount.utils.renderActions, sortable: false, id: 'actions', header: _('msd_actions')}
 		};
 		var tmp = [];

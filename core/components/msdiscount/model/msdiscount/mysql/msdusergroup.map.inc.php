@@ -8,6 +8,7 @@ $xpdo_meta_map['msdUserGroup']= array (
   array (
     'discount' => '0',
     'joinsum' => 0,
+    'rates' => 0,
   ),
   'fieldMeta' => 
   array (
@@ -27,6 +28,14 @@ $xpdo_meta_map['msdUserGroup']= array (
       'null' => true,
       'default' => 0,
     ),
+    'rates' =>
+    array (
+      'dbtype' => 'decimal',
+      'precision' => '10,2',
+      'phptype' => 'float',
+      'null' => true,
+      'default' => 0,
+    ),
   ),
   'indexes' => 
   array (
@@ -39,6 +48,21 @@ $xpdo_meta_map['msdUserGroup']= array (
       'columns' => 
       array (
         'joinsum' => 
+        array (
+          'length' => '',
+          'collation' => 'A',
+          'null' => false,
+        ),
+      ),
+    ),'rates' =>
+    array (
+      'alias' => 'rates',
+      'primary' => false,
+      'unique' => false,
+      'type' => 'BTREE',
+      'columns' =>
+      array (
+        'rates' =>
         array (
           'length' => '',
           'collation' => 'A',

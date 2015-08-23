@@ -1,6 +1,8 @@
 <?php
 
-$_lang['area_msdiscount_main'] = 'Main';
+$_lang['area_msdiscount_main'] = 'Основные';
+$_lang['area_msdiscount'] = 'Основныеss';
 
-$_lang['setting_msdiscount_some_setting'] = 'Some setting';
-$_lang['setting_msdiscount_some_setting_desc'] = 'This is description for some setting';
+$_lang['setting_msdiscount_some_setting'] = 'Какая-то настройка';
+$_lang['setting_msdiscount_some_setting_desc'] = 'Это описание для какой-то настройки';
+$_lang['setting_msdiscount_handler_class2'] = 'Класс обработчик заказа';

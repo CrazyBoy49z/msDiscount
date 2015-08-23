@@ -25,9 +25,14 @@ class msDiscount {
 		$corePath = $this->modx->getOption('msdiscount_core_path', $config, $this->modx->getOption('core_path') . 'components/msdiscount/');
 		$assetsUrl = $this->modx->getOption('msdiscount_assets_url', $config, $this->modx->getOption('assets_url') . 'components/msdiscount/');
 		$connectorUrl = $assetsUrl . 'connector.php';
+		$actionUrl = $assetsUrl . 'action.php';
 
+        $prefix_length = $this->modx->getOption('msd_coupons_prefix_length', NULL, false);
 		$this->config = array_merge(array(
 			'assetsUrl' => $assetsUrl,
+			'actionUrl' => $actionUrl,
+			'pageId'    => $this->modx->resource->id,
+			'coupon_js' => $assetsUrl.'js/web/coupon.js',
 			'cssUrl' => $assetsUrl . 'css/',
 			'jsUrl' => $assetsUrl . 'js/',
 			'imagesUrl' => $assetsUrl . 'images/',
@@ -41,7 +46,13 @@ class msDiscount {
 			'snippetsPath' => $corePath . 'elements/snippets/',
 			'processorsPath' => $corePath . 'processors/',
 			'debug' => false,
+            'prefix_length' => $prefix_length > 20 ? 20 : $prefix_length,
+            'discount_sum_cost' => $this->modx->getOption('msd2_discount_sum_cost', NULL, false),
 		), $config);
+
+echo '<pre>';
+print_r($prefix_length); die;
+
 
 		$this->modx->addPackage('msdiscount', $this->config['modelPath']);
 		$this->modx->lexicon->load('msdiscount:default');
@@ -268,7 +279,7 @@ class msDiscount {
 	 * @return bool|null|string
 	 */
 	public function checkCoupon($code) {
-		/** @var msdCoupon $coupon */
+
 		if (!$coupon = $this->modx->getObject('msdCoupon', array('code' => $code))) {
 			return $this->modx->lexicon('msd_err_coupon_code');
 		}
@@ -291,6 +302,284 @@ class msDiscount {
 
 
 	/**
+	 * Check coupon by code NEW
+	 *
+	 * @param $code
+	 *
+	 * @return bool|null|string
+	 */
+	public function checkCouponNew($code) {
+
+        $code = trim($code);
+        if(empty($code)) {
+            return $this->error('msd_err_coupon_empty_code');
+        }
+
+        $msdCouponparam = array('code' => $code);
+        if (!$tmp_coupon = $this->modx->getObject('msdCoupon', $msdCouponparam)) {
+            return $this->error('msd_err_coupon_code');
+        }
+
+        $tmp_group = $tmp_coupon->getOne('Group');
+
+        // is one coupon
+        if($tmp_group->get('disposable') != true){
+            $msdCouponparam['active'] = 1;
+        }
+
+		/** @var msdCoupon $coupon */
+		if (!$coupon = $this->modx->getObject('msdCoupon', $msdCouponparam)) {
+            $msd = 'msd_err_coupon_code';
+            if($tmp_group->get('disposable') != true){
+                $msd = 'msd_err_coupon_active';
+            }
+			return $this->error($msd);
+		}
+
+        if($tmp_group->get('disposable') == true){
+            if (!$coupon->get('active')) {
+                return $this->error('msd_err_coupon_active');
+            }
+        }
+
+
+		$group = $coupon->getOne('Group');
+		$begins = $group->get('begins');
+		if (!in_array($begins, array('', '0000-00-00-00 00:00:00', '-1-11-30 00:00:00')) && time() < strtotime($begins)) {
+			return $this->error($this->modx->lexicon('msd_err_coupon_begins',array('coupon' => $code)));
+		}
+		$ends = $group->get('ends');
+		if (!in_array($ends, array('', '0000-00-00-00 00:00:00', '-1-11-30 00:00:00')) && time() > strtotime($ends)) {
+			return $this->error($this->modx->lexicon('msd_err_coupon_ends',array('coupon' => $code)));
+		}
+
+
+        // check group user
+        if($group_in = $group->getCouponDiscountGroupUser($coupon, 'users')) {
+            return $this->error('msd_err_copons_code_access_die_user');
+        }
+
+        // check group product
+        if($group_in = $group->getCouponDiscountGroupUser($coupon, 'products')) {
+            return $this->error('msd_err_copons_code_product');
+        }
+
+        // check group product
+        if($user_action = $this->getCouponUserAction($coupon, $group)) {
+            return $this->error('msd_err_copons_code_activeted_user');
+        }
+
+        $_SESSION['minishop2']['order']['coupon_code']  = $code;
+
+		return $this->success('');
+	}
+
+
+    /**
+     * Check user action coupon one
+     *
+     * @param $coupon
+     *
+     * @return true|false
+     */
+    public function getCouponUserAction($coupon, $group) {
+
+        if($group->get('disposable') != true){
+
+            // check action user coupon
+            $code_one = $this->modx->getOption('msd_coupons_code_one');
+            if ($this->modx->user->isAuthenticated() and $code_one == true) {
+                $user = $this->modx->getObject('modUser', $this->modx->user->id);
+                $profile = $user->getOne('Profile');
+                $extended = $profile->get('extended');
+                $coupon_code = array();
+                if ($coupons = $extended['msd_coupon_action']) {
+                    $coupon_code = unserialize($coupons);
+                }
+                if (in_array($coupon->get('code'), $coupon_code)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Cancel coupon by code
+     *
+     * @return true
+     */
+    public function cancelCoupon() {
+
+        unset($_SESSION['minishop2']['order']['coupon_code']);
+
+        return true;
+    }
+
+
+    /**
+     * status Order by code
+     *
+     *
+     * @return array
+     */
+    public function statusCoupon() {
+
+        $coupon = $_SESSION['minishop2']['order']['coupon_code'];
+        $msg = '';
+        $class = '';
+        $disabled = 'disabled';
+        $this->modx->setPlaceholder('coupon_code', $coupon);
+
+        $response = $this->checkCouponNew($coupon);
+        if(!$response['success']){
+            if(!empty($coupon)){
+                $msg = $response['message'];
+                $class = 'has-error';
+                $disabled = '';
+            }
+
+            $coupon = '';
+            //$this->cancelCoupon();
+        }
+
+        if(empty($coupon))$disabled = '';
+
+        $this->modx->setPlaceholder('coupon_disabled', $disabled);
+        $this->modx->setPlaceholder('coupon_msg', $this->modx->lexicon($msg));
+        $this->modx->setPlaceholder('coupon_class', $class);
+
+        $miniShop2 = $this->modx->getService('miniShop2');
+        $miniShop2->initialize('web');
+        $statusCart = $miniShop2->cart->status();
+
+
+        $total_base_cost = 0;
+        $cart = $miniShop2->cart->get();
+        foreach ($cart as $key => $item) {
+                $get = $this->modx->getObject('msProduct', $item['id'])->toArray();
+                $total_base_cost += $get['price'] * $item['count'];
+        }
+
+
+        $discount               = empty($coupon) ? 0 : $this->getCouponDiscount($coupon, $statusCart['total_cost']);
+        $total_cost_full        = $statusCart['total_cost'];
+        $total_cost             = $statusCart['total_cost'] - $discount;
+
+
+        $discount_total_cost    = $total_base_cost - $total_cost;
+        $discount_sale          = $discount_total_cost - $discount;
+
+        $statusCart['total_discount']       = $discount;
+        $statusCart['total_discount_coupone'] = $total_base_cost - $discount;
+        $statusCart['total_discount_all']   = $discount_total_cost;
+        $statusCart['total_discount_sale']  = $discount_sale;
+        $statusCart['total_cost']           = $total_cost;
+        $statusCart['total_cost_old']       = $total_cost;
+        $statusCart['total_cost_full']      = $total_cost_full;
+        $statusCart['total_base_cost']      = $total_base_cost;
+
+
+        // discount sum order
+        if($this->config['discount_sum_cost']){
+            $whatCost = 'total_base_cost';
+        } else {
+            $whatCost = 'total_cost_old';
+        }
+
+
+        $discountMaxSum = $this->getSumAtExcessRates($statusCart[$whatCost]);
+
+        $gibSum = true;
+        $statusCart['total_discount_bigsum'] = 0;
+        if($gibSum == true){
+
+            if($whatCost == 'total_base_cost') {
+                $total_cost_old = $statusCart[$whatCost] - $discountMaxSum;
+
+                $discountMaxSum = $statusCart['total_base_cost'] - $total_cost_old;
+                $itog = $statusCart['total_cost_old'] - $discountMaxSum;
+
+
+
+            } else {
+
+                $itog = $statusCart[$whatCost] - $discountMaxSum;
+
+            }
+
+
+            $statusCart['total_discount_bigsum_sum'] = $total_base_cost - $discountMaxSum;
+            $statusCart['total_discount_bigsum'] = $discountMaxSum;
+            $statusCart['total_discount_all'] = $discountMaxSum + $statusCart['total_discount_all'];
+        }
+
+
+        $statusCart['total_cost_old'] = $itog;
+        $statusCart['total_cost'] = $itog;
+
+
+        $statusCart['coupon_description']  = '';
+        if ($coupons = $this->modx->getObject('msdCoupon', array('code' => $coupon))) {
+            $group = $coupons->getOne('Group');
+            $statusCart['coupon_description']  = $group->get('description');
+        }
+
+
+        foreach ($statusCart as $key => $val) {
+            if($key == 'coupon_description'){
+                $this->modx->setPlaceholder($key, $val);
+            } else {
+                $this->modx->setPlaceholder($key, $miniShop2->formatPrice($val));
+            }
+        }
+
+        // btn
+        $btn = !empty($coupon) ? 'msd_coupons_front_btn_cancel' : 'msd_coupons_front_btn_apply';
+        $this->modx->setPlaceholder('coupon_btn', $this->modx->lexicon($btn));
+
+        // action
+        $btn = !empty($coupon) ? 'coupon/cancel' : 'coupon/apply';
+        $this->modx->setPlaceholder('coupon_action', $this->modx->lexicon($btn));
+
+
+
+        return $statusCart;
+    }
+
+
+    /**
+     * status Order by code
+     *
+     * @param $code
+     *
+     * @return bool|null|string
+     */
+    public function getSumAtExcessRates($sum = 0) {
+        $groups = array();
+        $q = $this->modx->newQuery('msdUserGroup');
+        $q->where(array('rates:!=' => 0));
+        if ($q->prepare() && $q->stmt->execute()) {
+            while ($row = $q->stmt->fetch(PDO::FETCH_ASSOC)) {
+                //msdUserGroup_id
+                if($sum >= $row['msdUserGroup_rates']){
+                    $groups[] = $row['msdUserGroup_rates'];
+                    $groupsAll[$row['msdUserGroup_rates']] = $row['msdUserGroup_id'];
+
+                    $discount[$row['msdUserGroup_id']] = $row['msdUserGroup_discount'];
+                }
+            }
+        }
+        $val = max($groups, $sum);
+        $max = max($val);
+        $group_id = !empty($groupsAll[$max]) ? $groupsAll[$max] : 0;
+
+
+        return $this->getBigSumDiscount($discount[$group_id], $sum);
+    }
+
+
+    /**
 	 * Get discount from coupon
 	 *
 	 * @param $code
@@ -312,6 +601,31 @@ class msDiscount {
 				}
 			}
 		}
+
+		return $res > 0
+			? $res
+			: 0;
+	}
+
+
+    /**
+	 * Get discount from big summ
+	 *
+	 * @param $code
+	 * @param $price
+	 *
+	 * @return float|int
+	 */
+	public function getBigSumDiscount($discount, $price) {
+		$res = 0;
+
+		/** @var msdCoupon $coupon */
+        if (strpos($discount, '%') !== false) {
+            $res = $price * ((float)$discount / 100);
+        }
+        else {
+            $res = (float)$discount;
+        }
 
 		return $res > 0
 			? $res
@@ -501,4 +815,43 @@ class msDiscount {
 		return !empty($this->modx->version) && version_compare($this->modx->version['full_version'], $version, $dir);
 	}
 
+
+    /**
+     * This method returns an error of the order
+     *
+     * @param string $message A lexicon key for error message
+     * @param array $data.Additional data, for example cart status
+     * @param array $placeholders Array with placeholders for lexicon entry
+     *
+     * @return array|string $response
+     */
+    public function error($message = '', $data = array(), $placeholders = array()) {
+        $response = array(
+            'success' => false,
+            'message' => $this->modx->lexicon($message, $placeholders),
+            'data' => $data,
+        );
+
+        return $this->config['json_response'] ? $this->modx->toJSON($response) : $response;
+    }
+
+
+    /**
+     * This method returns an success of the order
+     *
+     * @param string $message A lexicon key for success message
+     * @param array $data.Additional data, for example cart status
+     * @param array $placeholders Array with placeholders for lexicon entry
+     *
+     * @return array|string $response
+     */
+    public function success($message = '', $data = array(), $placeholders = array()) {
+        $response = array(
+            'success' => true,
+            'message' => $this->modx->lexicon($message, $placeholders),
+            'data' => $data,
+        );
+
+        return $this->config['json_response'] ? $this->modx->toJSON($response) : $response;
+    }
 }

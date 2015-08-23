@@ -7,12 +7,14 @@ $xpdo_meta_map['msdCouponGroup']= array (
   'fields' => 
   array (
     'name' => NULL,
+    'description' => '',
     'discount' => NULL,
     'begins' => '0000-00-00 00:00:00',
     'ends' => '0000-00-00 00:00:00',
     'coupons' => 0,
     'activated' => 0,
     'prefix' => '',
+    'disposable' => 0,
   ),
   'fieldMeta' => 
   array (
@@ -22,6 +24,13 @@ $xpdo_meta_map['msdCouponGroup']= array (
       'precision' => '255',
       'phptype' => 'string',
       'null' => false,
+    ),
+    'description' =>
+    array (
+      'dbtype' => 'text',
+      'phptype' => 'text',
+      'null' => true,
+      'default' => '',
     ),
     'discount' => 
     array (
@@ -66,6 +75,14 @@ $xpdo_meta_map['msdCouponGroup']= array (
       'null' => true,
       'default' => '',
     ),
+    'disposable' =>
+      array (
+          'dbtype' => 'tinyint',
+          'precision' => '1',
+          'phptype' => 'integer',
+          'null' => true,
+          'default' => 0,
+      ),
   ),
   'composites' => 
   array (

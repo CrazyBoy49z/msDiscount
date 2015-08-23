@@ -11,6 +11,10 @@ $tmp = array(
 		'file' => 'msdgetdiscount',
 		'description' => '',
 	),
+	'msdCouponForm' => array(
+		'file' => 'msdcouponform',
+		'description' => '',
+	),
 
 );
 

@@ -73,6 +73,7 @@ $_lang['msd_coupons_order'] = 'Order';
 $_lang['msd_coupons_createdon'] = 'Created On';
 $_lang['msd_coupons_activatedon'] = 'Activated On';
 $_lang['msd_coupons_prefix'] = 'Prefix';
+$_lang['msd_coupons_description'] = 'Description';
 $_lang['msd_coupons_form_desc'] = 'Specify name of the group, period of validity, discount and the number of coupons.<br/>You can specify a unique prefix from 5 characters to distinguish it coupons from others.';
 
 $_lang['msd_group_id'] = 'Id';

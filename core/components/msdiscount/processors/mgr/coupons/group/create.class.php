@@ -33,13 +33,42 @@ class msdCouponGroupCreateProcessor extends modObjectCreateProcessor {
 			}
 		}
 
-		$prefix = $this->getProperty('prefix');
-		if (!empty($prefix) && !preg_match('#[A-Z0-9]{5}#i', $prefix)) {
-			$this->modx->error->addField('prefix', $this->modx->lexicon('msd_err_prefix'));
-		}
-		else {
-			$this->setProperty('prefix', strtoupper($prefix));
-		}
+        $prefix_accees = true;
+        $prefix = $this->getProperty('prefix');
+        $disposable = $this->getProperty('disposable');
+        $prefix_length = $disposable == true ? 5 : $this->modx->getOption('msd_coupons_prefix_length', NULL, 5);
+
+
+        if($disposable != true){
+
+
+            if(strlen($prefix) > $prefix_length and strlen($prefix) != $prefix_length){
+                $this->modx->error->addField('prefix', $this->modx->lexicon('msd_err_prefix', array('prefix_length' => $prefix_length)));
+                $prefix_accees = false;
+            }
+
+            if(!preg_match('~^[a-z0-9_\-]*$~i', $prefix)){
+                $this->modx->error->addField('prefix', $this->modx->lexicon('msd_err_prefix', array('prefix_length' => $prefix_length)));
+                $prefix_accees = false;
+            }
+
+        } else {
+
+            if(strlen($prefix) > $prefix_length and strlen($prefix) != $prefix_length){
+                $this->modx->error->addField('prefix', $this->modx->lexicon('msd_err_prefix', array('prefix_length' => $prefix_length)));
+                $prefix_accees = false;
+            }
+
+            if (!empty($prefix) && !preg_match('#[A-Z0-9]{5}#i', $prefix)) {
+                $this->modx->error->addField('prefix', $this->modx->lexicon('msd_err_prefix'));
+                $prefix_accees = false;
+            }
+
+        }
+
+        if($prefix_accees == true){
+            $this->setProperty('prefix', strtoupper($prefix));
+        }
 
 		return parent::beforeSet();
 	}

@@ -50,10 +50,10 @@ msDiscount.panel.Home = function(config) {
 				items: [{
 					html: '<p>' + _('msd_coupons_desc') + '</p>',
 					border: false,
-					bodyCssClass: 'panel-desc',
+					bodyCssClass: 'panel-desc'
 				},{
 					xtype: 'msd-grid-coupons-groups',
-					cls: 'main-wrapper',
+					cls: 'main-wrapper'
 				}]
 			},{
 				title: _('msd_users'),

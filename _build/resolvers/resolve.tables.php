@@ -21,6 +21,7 @@ if ($object->xpdo) {
 				'msdSaleMember',
 				'msdCouponGroup',
 				'msdCoupon',
+				'msdCouponsMember',
 			);
 			foreach ($tmp as $v) {
 				$manager->createObjectContainer($v);

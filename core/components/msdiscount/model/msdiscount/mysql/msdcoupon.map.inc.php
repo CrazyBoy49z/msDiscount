@@ -67,7 +67,7 @@ $xpdo_meta_map['msdCoupon']= array (
     array (
       'alias' => 'code',
       'primary' => false,
-      'unique' => true,
+      'unique' => false,
       'type' => 'BTREE',
       'columns' => 
       array (

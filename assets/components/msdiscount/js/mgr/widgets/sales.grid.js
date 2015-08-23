@@ -272,7 +272,7 @@ Ext.extend(msDiscount.window.Sale, MODx.Window, {
 			border: true,
 			activeTab: 0,
 			autoHeight: true,
-			stateful: true,
+			stateful: false,
 			stateId: 'msd-window-sales-' + config['mode'],
 			stateEvents: ['tabchange'],
 			getState:function() {return {activeTab: this.items.indexOf(this.getActiveTab())};},
